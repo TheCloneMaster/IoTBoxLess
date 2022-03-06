@@ -10,6 +10,7 @@ import socket
 import subprocess
 import sys
 import threading
+import netifaces
 
 from odoo import http
 from odoo.http import Response
@@ -59,9 +60,10 @@ class IoTboxHomepage(web.Home):
         return terminal_id or 'Not Configured'
 
     def get_homepage_data(self):
+        gateway = netifaces.gateways()['default'][netifaces.AF_INET][1]
         hostname = str(socket.gethostname())
         ssid = helpers.get_ssid()
-        wired = subprocess.check_output(['cat', '/sys/class/net/eth0/operstate']).decode('utf-8').strip('\n')
+        wired = subprocess.check_output(['cat', '/sys/class/net/' + gateway + '/operstate']).decode('utf-8').strip('\n')
         if wired == 'up':
             network = 'Ethernet'
         elif ssid:

@@ -103,10 +103,13 @@ class PrinterDriver(Driver):
                     ppdFile = ppd
                     break
             with cups_lock:
-                if ppdFile:
-                    conn.addPrinter(name=device['identifier'], ppdname=ppdFile, device=device['url'])
-                else:
-                    conn.addPrinter(name=device['identifier'], device=device['url'])
+                try:
+                    if ppdFile:
+                        conn.addPrinter(name=device['identifier'], ppdname=ppdFile, device=device['url'])
+                    else:
+                        conn.addPrinter(name=device['identifier'], device=device['url'])
+                except IPPError as e:
+                    _logger.error('Could not reach configured server %s', e)
                 conn.setPrinterInfo(device['identifier'], device['device-make-and-model'])
                 conn.enablePrinter(device['identifier'])
                 conn.acceptJobs(device['identifier'])

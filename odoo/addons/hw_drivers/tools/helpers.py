@@ -134,32 +134,22 @@ def get_img_name():
     return 'iotboxv%s_%s.zip' % (major, minor)
 
 def get_ip():
+    gateway = netifaces.gateways()['default'][netifaces.AF_INET][1]
     while True:
         try:
-            return netifaces.ifaddresses('eth0')[netifaces.AF_INET][0]['addr']
+            return netifaces.ifaddresses(gateway)[netifaces.AF_INET][0]['addr']
         except KeyError:
             pass
-
-        try:
-            return netifaces.ifaddresses('wlan0')[netifaces.AF_INET][0]['addr']
-        except KeyError:
-            pass
-
         _logger.warning("Couldn't get IP, sleeping and retrying.")
         time.sleep(5)
 
 def get_mac_address():
+    gateway = netifaces.gateways()['default'][netifaces.AF_INET][1]
     while True:
         try:
-            return netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']
+            return netifaces.ifaddresses(gateway)[netifaces.AF_LINK][0]['addr']
         except KeyError:
             pass
-
-        try:
-            return netifaces.ifaddresses('wlan0')[netifaces.AF_LINK][0]['addr']
-        except KeyError:
-            pass
-
         _logger.warning("Couldn't get MAC address, sleeping and retrying.")
         time.sleep(5)
 
@@ -181,7 +171,11 @@ def get_token():
     return read_file_first_line('token')
 
 def get_version():
-    return subprocess.check_output(['cat', '/var/odoo/iotbox_version']).decode().rstrip()
+    try:
+        iot_version = subprocess.check_output(['cat', '/var/odoo/iotbox_version']).decode().rstrip()
+    except Exception as e:
+        iot_version = 'posboxless'
+    return iot_version
 
 def get_wifi_essid():
     wifi_options = []
