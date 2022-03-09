@@ -1,0 +1,17 @@
+PyPDF2
+passlib
+babel
+markupsafe
+Werkzeug==0.16.1
+lxml
+decorator
+polib
+psycopg2-binary
+psutil
+jinja2
+pyopenssl==19.0.0
+html2text
+pyusb==1.0.2
+qrcode==6.1
+docutils
+pyserial==3.4

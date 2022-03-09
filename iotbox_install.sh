@@ -64,17 +64,18 @@ sudo apt-get upgrade -y
 #--------------------------------------------------
 # Install PostgreSQL Server
 #--------------------------------------------------
-#echo -e "\n---- Install PostgreSQL Server ----"
-#sudo apt-get install postgresql -y
+echo -e "\n---- Install PostgreSQL Server ----"
+sudo apt-get install postgresql -y
 
-#echo -e "\n---- Creating the ODOO PostgreSQL User  ----"
-#sudo su - postgres -c "createuser -s $OE_USER" 2> /dev/null || true
+echo -e "\n---- Creating the ODOO PostgreSQL User  ----"
+sudo su - postgres -c "createuser -s $OE_USER" 2> /dev/null || true
 
 #--------------------------------------------------
 # Install Dependencies
 #--------------------------------------------------
 echo -e "\n--- Installing Python 3 + pip3 --"
-sudo apt-get install git python3 python3-pip build-essential wget python3-dev python3-venv python3-wheel libxslt-dev libzip-dev libldap2-dev libsasl2-dev python3-setuptools node-less libpng12-0 libjpeg-dev gdebi -y
+sudo apt-get install git python3 python3-pip build-essential wget python3-dev python3-venv python3-wheel libxslt-dev libzip-dev libldap2-dev libsasl2-dev python3-setuptools node-less libjpeg-dev gdebi -y
+# libpng12-0 
 
 echo -e "\n---- Install python packages/requirements ----"
 sudo -H pip3 install -r https://github.com/odoo/odoo/raw/${OE_VERSION}/requirements.txt
@@ -139,7 +140,7 @@ sudo chown $OE_USER:$OE_USER /var/log/$OE_USER
 # Install ODOO
 #--------------------------------------------------
 echo -e "\n==== Installing PosBox Server ===="
-sudo git clone --depth 1 --branch $OE_VERSION https://github.com/TheCloneMaster/PosBox.git $OE_HOME_EXT/
+sudo git clone --depth 1 --branch $OE_VERSION https://github.com/TheCloneMaster/IoTBoxLess.git $OE_HOME_EXT/
 
 echo -e "\n---- Create custom module directory ----"
 sudo su $OE_USER -c "mkdir $OE_HOME/custom"
@@ -149,24 +150,26 @@ echo -e "\n---- Setting permissions on home folder ----"
 sudo chown -R $OE_USER:$OE_USER $OE_HOME/*
 
 echo -e "* Create server config file"
-sudo cp $OE_HOME_EXT/debian/odoo.conf /etc/${OE_CONFIG}.conf
+sudo cp $OE_HOME_EXT/odoo/addons/point_of_sale/tools/posbox/configuration/odoo.conf /etc/${OE_CONFIG}.conf
 sudo chown $OE_USER:$OE_USER /etc/${OE_CONFIG}.conf
 sudo chmod 640 /etc/${OE_CONFIG}.conf
 
-echo -e "* Change server config file"
-sudo sed -i s/"db_user = .*"/"db_user = $OE_USER"/g /etc/${OE_CONFIG}.conf
-sudo sed -i s/"; admin_passwd.*"/"admin_passwd = $OE_SUPERADMIN"/g /etc/${OE_CONFIG}.conf
-sudo su root -c "echo '[options]' >> /etc/${OE_CONFIG}.conf"
-sudo su root -c "echo 'logfile = /var/log/$OE_USER/$OE_CONFIG$1.log' >> /etc/${OE_CONFIG}.conf"
-sudo su root -c "echo 'addons_path=$OE_HOME_EXT/addons,$OE_HOME/custom/addons' >> /etc/${OE_CONFIG}.conf"
+#echo -e "* Change server config file"
+#sudo sed -i s/"db_user = .*"/"db_user = $OE_USER"/g /etc/${OE_CONFIG}.conf
+#sudo sed -i s/"; admin_passwd.*"/"admin_passwd = $OE_SUPERADMIN"/g /etc/${OE_CONFIG}.conf
+#sudo su root -c "echo '[options]' >> /etc/${OE_CONFIG}.conf"
+sudo su root -c "echo 'logfile = $OE_HOME_EXT/$OE_CONFIG$1.log' >> /etc/${OE_CONFIG}.conf"
+echo -e "* Change default xmlrpc port"
+sudo su root -c "echo 'xmlrpc_port = $OE_PORT' >> /etc/${OE_CONFIG}.conf"
+#sudo su root -c "echo 'addons_path=$OE_HOME_EXT/addons,$OE_HOME/custom/addons' >> /etc/${OE_CONFIG}.conf"
 
 echo -e "* Create startup file"
 sudo su root -c "echo '#!/bin/sh' >> $OE_HOME_EXT/start.sh"
-sudo su root -c "echo 'sudo -u $OE_USER $OE_HOME_EXT/openerp-server --config=/etc/${OE_CONFIG}.conf' >> $OE_HOME_EXT/start.sh"
+sudo su root -c "echo 'sudo -u $OE_USER $OE_HOME_EXT/odoo/odoo-bin --config=/etc/${OE_CONFIG}.conf  --load=hw_drivers,hw_escpos,hw_posbox_homepage,point_of_sale,web' >> $OE_HOME_EXT/start.sh"
 sudo chmod 755 $OE_HOME_EXT/start.sh
 
 echo -e "* Install requirements.txt"
-sudo -H pip install -r $OE_HOME_EXT/requirements.txt
+sudo -H pip3 install -r $OE_HOME_EXT/requirements.txt
 
 
 #--------------------------------------------------
@@ -188,7 +191,7 @@ cat <<EOF > ~/$OE_CONFIG
 # Description: ODOO Business Applications
 ### END INIT INFO
 PATH=/bin:/sbin:/usr/bin
-DAEMON=$OE_HOME_EXT/odoo-bin
+DAEMON=$OE_HOME_EXT/odoo/odoo-bin
 NAME=$OE_CONFIG
 DESC=$OE_CONFIG
 
@@ -202,8 +205,8 @@ CONFIGFILE="/etc/${OE_CONFIG}.conf"
 PIDFILE=/var/run/\${NAME}.pid
 
 # Additional options that are passed to the Daemon.
-#DAEMON_OPTS="-c \$CONFIGFILE --load=web,hw_proxy,hw_posbox_homepage,hw_escpos"
-DAEMON_OPTS="--load=web,hw_proxy,hw_posbox_homepage,hw_escpos --workers=1"
+DAEMON_OPTS="-c \$CONFIGFILE --load=hw_drivers,hw_escpos,hw_posbox_homepage,point_of_sale,web"
+#DAEMON_OPTS="--load=hw_drivers,hw_escpos,hw_posbox_homepage,point_of_sale,web"
 [ -x \$DAEMON ] || exit 0
 [ -f \$CONFIGFILE ] || exit 0
 checkpid() {
@@ -253,8 +256,6 @@ sudo mv ~/$OE_CONFIG /etc/init.d/$OE_CONFIG
 sudo chmod 755 /etc/init.d/$OE_CONFIG
 sudo chown root: /etc/init.d/$OE_CONFIG
 
-echo -e "* Change default xmlrpc port"
-sudo su root -c "echo 'xmlrpc_port = $OE_PORT' >> /etc/${OE_CONFIG}.conf"
 
 echo -e "* Start ODOO on Startup"
 sudo update-rc.d $OE_CONFIG defaults
