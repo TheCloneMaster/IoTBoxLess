@@ -17,6 +17,7 @@
  
 ##fixed parameters
 #iotbox
+OS_USER="boleteria"
 OE_USER="iotbox"
 OE_HOME="/$OE_USER"
 OE_HOME_EXT="/$OE_USER/${OE_USER}-server"
@@ -68,7 +69,7 @@ echo -e "\n---- Install PostgreSQL Server ----"
 sudo apt-get install postgresql -y
 
 echo -e "\n---- Creating the ODOO PostgreSQL User  ----"
-sudo su - postgres -c "createuser -s $OE_USER" 2> /dev/null || true
+sudo su - postgres -c "createuser -s $OS_USER" 2> /dev/null || true
 
 #--------------------------------------------------
 # Install Dependencies
@@ -78,7 +79,7 @@ sudo apt-get install git python3 python3-pip build-essential wget python3-dev py
 # libpng12-0 
 
 echo -e "\n---- Install python packages/requirements ----"
-sudo -H pip3 install -r https://github.com/odoo/odoo/raw/${OE_VERSION}/requirements.txt
+sudo -H pip3 install -r https://github.com/TheCloneMaster/IoTBoxLess/raw/main/requirements.txt
 
 echo -e "\n---- Installing nodeJS NPM and rtlcss for LTR support ----"
 sudo apt-get install nodejs npm -y
@@ -98,15 +99,15 @@ sudo npm install -g rtlcss
 ###
 ###
 ###echo -e "\n---- Create USB users ----"
-###sudo groupadd usbusers
-###sudo adduser $OE_USER usbusers
-###sudo usermod -a -G usbusers $OE_USER
-###
-###echo -e "* Create udev USB access rules file"
-###cat <<EOF > /etc/udev/rules.d/99-usbusers.rules
-###SUBSYSTEM=="usb", GROUP="usbusers", MODE="0660"
-###SUBSYSTEMS=="usb", GROUP="usbusers", MODE="0660"
-###EOF
+sudo groupadd usbusers
+sudo adduser boleteria usbusers
+sudo usermod -a -G usbusers boleteria
+
+echo -e "* Create udev USB access rules file"
+cat <<EOF > /etc/udev/rules.d/99-usbusers.rules
+SUBSYSTEM=="usb", GROUP="usbusers", MODE="0660"
+SUBSYSTEMS=="usb", GROUP="usbusers", MODE="0660"
+EOF
 
 #--------------------------------------------------
 # Install Wkhtmltopdf if needed
@@ -127,14 +128,14 @@ else
   echo "Wkhtmltopdf isn't installed due to the choice of the user!"
 fi
 	
-echo -e "\n---- Create IoTBox system user ----"
-sudo adduser --system --quiet --shell=/bin/bash --home=$OE_HOME --gecos 'IOTBOX' --group $OE_USER
+#echo -e "\n---- Create IoTBox system user ----"
+#sudo adduser --system --quiet --shell=/bin/bash --home=$OE_HOME --gecos 'IOTBOX' --group $OE_USER
 #The user should also be added to the sudo'ers group.
-sudo adduser $OE_USER sudo
+#sudo adduser $OE_USER sudo
 
 echo -e "\n---- Create Log directory ----"
 sudo mkdir /var/log/$OE_USER
-sudo chown $OE_USER:$OE_USER /var/log/$OE_USER
+sudo chown $OS_USER:$OS_USER /var/log/$OE_USER
 
 #--------------------------------------------------
 # Install ODOO
@@ -143,19 +144,19 @@ echo -e "\n==== Installing PosBox Server ===="
 sudo git clone --depth 1 --branch $OE_VERSION https://github.com/TheCloneMaster/IoTBoxLess.git $OE_HOME_EXT/
 
 echo -e "\n---- Create custom module directory ----"
-sudo su $OE_USER -c "mkdir $OE_HOME/custom"
-sudo su $OE_USER -c "mkdir $OE_HOME/custom/addons"
+sudo su $OS_USER -c "mkdir $OE_HOME/custom"
+sudo su $OS_USER -c "mkdir $OE_HOME/custom/addons"
 
 echo -e "\n---- Setting permissions on home folder ----"
-sudo chown -R $OE_USER:$OE_USER $OE_HOME/*
+sudo chown -R $OS_USER:$OS_USER $OE_HOME/*
 
 echo -e "* Create server config file"
 sudo cp $OE_HOME_EXT/odoo/addons/point_of_sale/tools/posbox/configuration/odoo.conf /etc/${OE_CONFIG}.conf
-sudo chown $OE_USER:$OE_USER /etc/${OE_CONFIG}.conf
+sudo chown $OS_USER:$OS_USER /etc/${OE_CONFIG}.conf
 sudo chmod 640 /etc/${OE_CONFIG}.conf
 
 #echo -e "* Change server config file"
-#sudo sed -i s/"db_user = .*"/"db_user = $OE_USER"/g /etc/${OE_CONFIG}.conf
+#sudo sed -i s/"db_user = .*"/"db_user = $OS_USER"/g /etc/${OE_CONFIG}.conf
 #sudo sed -i s/"; admin_passwd.*"/"admin_passwd = $OE_SUPERADMIN"/g /etc/${OE_CONFIG}.conf
 #sudo su root -c "echo '[options]' >> /etc/${OE_CONFIG}.conf"
 sudo su root -c "echo 'logfile = $OE_HOME_EXT/$OE_CONFIG$1.log' >> /etc/${OE_CONFIG}.conf"
@@ -165,7 +166,7 @@ sudo su root -c "echo 'xmlrpc_port = $OE_PORT' >> /etc/${OE_CONFIG}.conf"
 
 echo -e "* Create startup file"
 sudo su root -c "echo '#!/bin/sh' >> $OE_HOME_EXT/start.sh"
-sudo su root -c "echo 'sudo -u $OE_USER $OE_HOME_EXT/odoo/odoo-bin --config=/etc/${OE_CONFIG}.conf  --load=hw_drivers,hw_escpos,hw_posbox_homepage,point_of_sale,web' >> $OE_HOME_EXT/start.sh"
+sudo su root -c "echo 'sudo -u $OS_USER $OE_HOME_EXT/odoo/odoo-bin --config=/etc/${OE_CONFIG}.conf  --load=hw_drivers,hw_escpos,hw_posbox_homepage,point_of_sale,web' >> $OE_HOME_EXT/start.sh"
 sudo chmod 755 $OE_HOME_EXT/start.sh
 
 echo -e "* Install requirements.txt"
@@ -177,7 +178,7 @@ sudo -H pip3 install -r $OE_HOME_EXT/requirements.txt
 #--------------------------------------------------
 
 echo -e "* Create init file"
-cat <<EOF > ~/$OE_CONFIG
+cat <<EOF > /iotbox/iotbox-server/$OE_CONFIG
 #!/bin/sh
 ### BEGIN INIT INFO
 # Provides: $OE_CONFIG
@@ -194,16 +195,12 @@ PATH=/bin:/sbin:/usr/bin
 DAEMON=$OE_HOME_EXT/odoo/odoo-bin
 NAME=$OE_CONFIG
 DESC=$OE_CONFIG
-
 # Specify the user name (Default: posbox).
-USER=$OE_USER
-
+USER=$OS_USER
 # Specify an alternate config file (Default: /etc/openerp-server.conf).
 CONFIGFILE="/etc/${OE_CONFIG}.conf"
-
 # pidfile
 PIDFILE=/var/run/\${NAME}.pid
-
 # Additional options that are passed to the Daemon.
 DAEMON_OPTS="-c \$CONFIGFILE --load=hw_drivers,hw_escpos,hw_posbox_homepage,point_of_sale,web"
 #DAEMON_OPTS="--load=hw_drivers,hw_escpos,hw_posbox_homepage,point_of_sale,web"
@@ -215,7 +212,6 @@ pid=\`cat \$PIDFILE\`
 [ -d /proc/\$pid ] && return 0
 return 1
 }
-
 case "\${1}" in
 start)
 echo -n "Starting \${DESC}: "
@@ -230,7 +226,6 @@ start-stop-daemon --stop --quiet --pidfile \$PIDFILE \
 --oknodo
 echo "\${NAME}."
 ;;
-
 restart|force-reload)
 echo -n "Restarting \${DESC}: "
 start-stop-daemon --stop --quiet --pidfile \$PIDFILE \
@@ -246,13 +241,12 @@ N=/etc/init.d/\$NAME
 echo "Usage: \$NAME {start|stop|restart|force-reload}" >&2
 exit 1
 ;;
-
 esac
 exit 0
 EOF
 
 echo -e "* Security Init File"
-sudo mv ~/$OE_CONFIG /etc/init.d/$OE_CONFIG
+sudo mv /iotbox/iotbox-server/$OE_CONFIG /etc/init.d/$OE_CONFIG
 sudo chmod 755 /etc/init.d/$OE_CONFIG
 sudo chown root: /etc/init.d/$OE_CONFIG
 
@@ -266,7 +260,7 @@ echo "-----------------------------------------------------------"
 echo "Done! The PosBox server is up and running. Specifications:"
 echo "Port: $OE_PORT"
 echo "User service: $OE_USER"
-echo "User PostgreSQL: $OE_USER"
+echo "User PostgreSQL: $OS_USER"
 echo "Code location: $OE_USER"
 echo "Addons folder: $OE_USER/$OE_CONFIG/addons/"
 echo "Start PosBox service: sudo service $OE_CONFIG start"
